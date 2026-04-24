@@ -1,0 +1,36 @@
+name: Deploy Application
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up environment variables
+      run: |
+        echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+        echo "IMAGE=ghcr.io/${{ github.repository }}:stable" >> $GITHUB_ENV
+    
+    - name: Deploy to target node
+      run: |
+        chmod +x scripts/deploy.sh
+        ./scripts/deploy.sh ${{ env.IMAGE }} ${{ env.TAG }}
+    
+    - name: Verify deployment
+      run: |
+        chmod +x scripts/verify.sh
+        ./scripts/verify.sh
+    
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "Deployment failed for tag ${{ github.ref_name }}"
+        # Add email/messenger notification here if needed
